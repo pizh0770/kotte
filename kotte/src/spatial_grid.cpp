@@ -21,6 +21,12 @@ namespace kotte
         cells_.resize(static_cast<std::size_t>(columns_) * static_cast<std::size_t>(rows_));
     }
 
+    void SpatialGrid::clear() noexcept {
+        for (Cell& cell : cells_) {
+            cell.clear();
+        }
+    }
+
     void SpatialGrid::insert(EntityHandle entity_handle, Rectangle world_bounds){
         const CellRange range = cells_overlapping(world_bounds);
 

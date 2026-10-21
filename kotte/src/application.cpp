@@ -71,6 +71,7 @@ namespace kotte
         if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q)){
             request_exit();
         }
+        frame_actions_.restart_round = (round_state_ == RoundState::lost) && IsKeyPressed(KEY_R);
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
 
         Vector2& movement_direction = frame_actions_.player_movement_direction;
@@ -94,6 +95,10 @@ namespace kotte
     }
 
     void Application::update_gameplay(float delta_time){
+        if (frame_actions_.restart_round) {
+            restart_round();
+            return;
+        }
         // The player and every enemy are movers; each asks its own collision question.
         if (round_state_ == RoundState::playing) {
             update_player(delta_time);
@@ -343,6 +348,30 @@ namespace kotte
         destroy_entity_requests_.push_back({ player_handle_ });
     }
 
+    void Application::restart_round() {
+        place_bomb_requests_.clear();
+        bomb_detonated_facts_.clear();
+        enemy_contact_facts_.clear();
+        destroy_entity_requests_.clear();
+
+        blast_effects_.clear();
+        active_bomb_handles_.clear();
+        enemy_handles_.clear();
+        
+        entities_.clear();
+        spatial_grid_.clear();
+
+        random_ = Random{ seed_ };
+        map_ = make_room(map_.width(), map_.height(), random_);
+        
+        populate_entities();
+        initialize_enemies();
+
+        round_state_ = RoundState::playing;
+
+        update_camera(0.0f);
+    }
+
     bool Application::resolve_blast_tile(
         BlastEffect& effect,
         int column,
@@ -566,7 +595,8 @@ namespace kotte
         DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
 
         if (round_state_ == RoundState::lost) {
-            DrawText("YOU LOSE", window_.width() / 2 - 80, window_.height() / 2 - 10, 40, RED);
+            DrawText("YOU LOSE", window_.width() / 2 - 120, window_.height() / 2 - 10, 40, RED);
+            DrawText("press R to restart", window_.width() / 2 - 120, window_.height() / 2 + 30, 20, LIGHTGRAY);
         }
     }
 

@@ -27,6 +27,7 @@ namespace kotte
     public:
         SpatialGrid(Vector2 world_size, float cell_size);
 
+        void clear() noexcept;
         void insert(EntityHandle entity_handle, Rectangle world_bounds);
         void remove(EntityHandle entity_handle, Rectangle world_bounds);
         void update(

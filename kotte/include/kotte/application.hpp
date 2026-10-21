@@ -55,6 +55,7 @@ namespace kotte
         struct FrameActions final {
             Vector2 player_movement_direction{};
             bool place_bomb = false;
+            bool restart_round = false;
         };
 
         struct PlaceBombRequest final {
@@ -99,6 +100,7 @@ namespace kotte
         void apply_bomb_placements();
 
         void player_death();
+        void restart_round();
 
         [[nodiscard]] bool resolve_blast_tile(
             BlastEffect& effect,
