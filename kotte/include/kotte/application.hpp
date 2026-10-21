@@ -17,6 +17,11 @@
 
 namespace kotte
 {
+    enum class RoundState : std::uint8_t {
+        playing,
+        lost
+    };
+
     struct CollisionDiagnostics final {
         std::size_t enemy_updates = 0;
         std::size_t movement_attempts = 0;
@@ -87,6 +92,9 @@ namespace kotte
         void queue_bomb_placement();
         void apply_entity_destructions();
         void apply_bomb_placements();
+
+        void player_death();
+
         [[nodiscard]] bool resolve_blast_tile(
             BlastEffect& effect,
             int column,
@@ -157,6 +165,7 @@ namespace kotte
         CollisionDiagnostics collision_diagnostics_;
         std::uint64_t seed_;
         EntityHandle player_handle_;
+        RoundState round_state_ = RoundState::playing;
         bool exit_requested_ = false;
     };
 }

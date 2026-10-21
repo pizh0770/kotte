@@ -94,9 +94,11 @@ namespace kotte
 
     void Application::update_gameplay(float delta_time){
         // The player and every enemy are movers; each asks its own collision question.
-        update_player(delta_time);
+        if (round_state_ == RoundState::playing) {
+            update_player(delta_time);
+            queue_bomb_placement();
+        }
         update_enemies(delta_time);
-        queue_bomb_placement();
     }
 
     void Application::update_timed_gameplay(float delta_time){
@@ -327,6 +329,14 @@ namespace kotte
         destroy_entity_requests_.clear();
     }
 
+    void Application::player_death() {
+        if (round_state_ != RoundState::playing) {
+            return;
+        }
+        round_state_ = RoundState::lost;
+        destroy_entity_requests_.push_back({ player_handle_ });
+    }
+
     bool Application::resolve_blast_tile(
         BlastEffect& effect,
         int column,
@@ -361,7 +371,7 @@ namespace kotte
                 blocked_by_crate = true;
                 break;
             case EntityKind::player:
-                // Player-hit consequences are outside the Week 6 lifetime seam.
+                player_death();
                 break;
             }
         }
@@ -392,7 +402,9 @@ namespace kotte
     void Application::update_camera(float delta_time) noexcept{
         (void) delta_time; // name the argument to avoid the static analyzer yelling at us. :) We'll animate the camera later.
         camera_.set_viewport_size(window_.size());
-        camera_.set_centre(player().world_position);
+        if (const Entity* player_ptr = entities_.try_get(player_handle_)) {
+            camera_.set_centre(player_ptr->world_position);
+        }
     }
 
     void Application::render(){
@@ -546,6 +558,10 @@ namespace kotte
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
         DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+
+        if (round_state_ == RoundState::lost) {
+            DrawText("YOU LOSE", window_.width() / 2 - 80, window_.height() / 2 - 10, 40, RED);
+        }
     }
 
     void Application::populate_entities(){
