@@ -129,7 +129,7 @@ namespace kotte
         [[nodiscard]] static bool is_solid(EntityKind kind) noexcept;
         [[nodiscard]] static Vector2 cardinal_vector(CardinalDirection direction) noexcept;
         [[nodiscard]] CardinalDirection different_enemy_direction(CardinalDirection current_direction);
-        [[nodiscard]] bool owner_has_active_bomb(EntityHandle owner) const noexcept;
+        [[nodiscard]] std::size_t owner_active_bomb_count(EntityHandle owner) const noexcept;
         [[nodiscard]] bool is_tile_occupied_by_bomb(Vector2 tile_centre_position) const noexcept;
         [[nodiscard]] static Vector2 tile_centre(Vector2 world_position) noexcept;
         [[nodiscard]] static Vector2 tile_centre(int column, int row) noexcept;
@@ -143,6 +143,7 @@ namespace kotte
         static constexpr float bomb_fuse_seconds_ = 2.0f;
         static constexpr std::uint8_t bomb_blast_range_ = 3;
         static constexpr float blast_effect_seconds_ = 0.35f;
+        static constexpr std::size_t bomb_capacity_ = 3;
         static constexpr Color background_color_{0x11, 0x22, 0x33, 0xff};
         static constexpr Color floor_colors_[3]{
             Color{0x38, 0x49, 0x52, 0xff},
