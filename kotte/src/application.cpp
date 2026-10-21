@@ -268,11 +268,16 @@ namespace kotte
             return;
         }
 
+        const Vector2 candidate_centre = tile_centre(player().world_position);
+        if (is_tile_occupied_by_bomb(candidate_centre)) {
+            return;
+        }
+
         // Capture values rather than an Entity reference because the request
         // deliberately outlives this simulation phase.
         place_bomb_requests_.push_back({
             player_handle_,
-            tile_centre(player().world_position)
+            candidate_centre
         });
     }
 
@@ -280,7 +285,8 @@ namespace kotte
         for(const PlaceBombRequest& request : place_bomb_requests_){
             const Entity* owner = entities_.try_get(request.owner);
             if(owner == nullptr || owner->kind != EntityKind::player
-                || owner_has_active_bomb(request.owner)){
+                || owner_has_active_bomb(request.owner)
+                || is_tile_occupied_by_bomb(request.world_position)){
                 continue;
             }
 
@@ -741,6 +747,15 @@ namespace kotte
                 continue;
             }
 
+            if (candidate->kind == EntityKind::bomb) {
+                if (candidate->bomb_state.has_value() && candidate->bomb_state->owner == moving_entity_handle) {
+                    const Rectangle current_collision_bounds = entity_collision_bounds(entity(moving_entity_handle));
+                    if (CheckCollisionRecs(current_collision_bounds, entity_collision_bounds(*candidate))) {
+                        continue;
+                    }
+                }
+            }
+
             // Narrow phase: exact-test the remaining solid candidate.
             ++collision_diagnostics_.exact_tests;
             if(CheckCollisionRecs(proposed_collision_bounds, entity_collision_bounds(*candidate))){
@@ -764,9 +779,8 @@ namespace kotte
         case EntityKind::player:
         case EntityKind::crate:
         case EntityKind::enemy:
-            return true;
         case EntityKind::bomb:
-            return false;
+            return true;
         }
 
         return false;
@@ -803,6 +817,14 @@ namespace kotte
                 && bomb->bomb_state.has_value()
                 && bomb->bomb_state->owner == owner;
         });
+    }
+
+    bool Application::is_tile_occupied_by_bomb(Vector2 tile_centre_position) const noexcept {
+        return std::ranges::any_of(active_bomb_handles_, [this, tile_centre_position](EntityHandle bomb_handle) {
+            const Entity* bomb = entities_.try_get(bomb_handle);
+            return bomb != nullptr
+                && Vector2Equals(bomb->world_position, tile_centre_position);
+            });
     }
 
     Vector2 Application::tile_centre(Vector2 world_position) noexcept{
