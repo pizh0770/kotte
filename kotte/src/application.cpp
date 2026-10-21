@@ -61,6 +61,7 @@ namespace kotte
         // Every request must be consumed by the previous frame's mutation phase.
         assert(place_bomb_requests_.empty());
         assert(bomb_detonated_facts_.empty());
+        assert(enemy_contact_facts_.empty());
         assert(destroy_entity_requests_.empty());
         frame_actions_ = {};
         collision_diagnostics_ = {};
@@ -154,6 +155,11 @@ namespace kotte
         }
 
         bomb_detonated_facts_.clear();
+
+        if (!enemy_contact_facts_.empty()) {
+            player_death();
+        }
+        enemy_contact_facts_.clear();
     }
 
     void Application::apply_structural_mutations(){
@@ -710,6 +716,13 @@ namespace kotte
             if(CheckCollisionRecs(proposed_collision_bounds, entity_collision_bounds(*candidate))){
                 ++collision_diagnostics_.contacts;
                 blocked = true;
+                if ((proposed_entity.kind == EntityKind::player && candidate->kind == EntityKind::enemy)
+                    || (proposed_entity.kind == EntityKind::enemy && candidate->kind == EntityKind::player)) {
+                    enemy_contact_facts_.push_back({
+                        .enemy = proposed_entity.kind == EntityKind::enemy ? moving_entity_handle : candidate_handle,
+                        .player = proposed_entity.kind == EntityKind::player ? moving_entity_handle : candidate_handle
+                        });
+                }
             }
         }
 

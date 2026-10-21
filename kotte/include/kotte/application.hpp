@@ -69,6 +69,11 @@ namespace kotte
             std::uint8_t blast_range = 0;
         };
 
+        struct EnemyContact final {
+            EntityHandle enemy;
+            EntityHandle player;
+        };
+
         struct DestroyEntityRequest final {
             EntityHandle entity;
         };
@@ -160,6 +165,7 @@ namespace kotte
         FrameActions frame_actions_;
         std::vector<PlaceBombRequest> place_bomb_requests_;
         std::vector<BombDetonated> bomb_detonated_facts_;
+        std::vector<EnemyContact> enemy_contact_facts_;
         std::vector<DestroyEntityRequest> destroy_entity_requests_;
         std::vector<BlastEffect> blast_effects_;
         CollisionDiagnostics collision_diagnostics_;
