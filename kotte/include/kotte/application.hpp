@@ -61,6 +61,7 @@ namespace kotte
         struct PlaceBombRequest final {
             EntityHandle owner;
             Vector2 world_position{};
+            std::uint8_t blast_range = 0;
         };
 
         struct BombDetonated final {
@@ -73,6 +74,10 @@ namespace kotte
         struct EnemyContact final {
             EntityHandle enemy;
             EntityHandle player;
+        };
+
+        struct PickupContact final {
+            EntityHandle pickup;
         };
 
         struct DestroyEntityRequest final {
@@ -96,6 +101,7 @@ namespace kotte
         void try_move_player(Vector2 axis_displacement);
         void update_enemies(float delta_time);
         void queue_bomb_placement();
+        void check_player_pickups();
         void apply_entity_destructions();
         void apply_bomb_placements();
 
@@ -141,7 +147,8 @@ namespace kotte
         static constexpr float player_speed_ = 240.0f;
         static constexpr float enemy_speed_ = 80.0f;
         static constexpr float bomb_fuse_seconds_ = 2.0f;
-        static constexpr std::uint8_t bomb_blast_range_ = 3;
+        static constexpr std::uint8_t initial_blast_range_ = 3;
+        static constexpr std::uint8_t max_blast_range_ = 4;
         static constexpr float blast_effect_seconds_ = 0.35f;
         static constexpr std::size_t bomb_capacity_ = 3;
         static constexpr Color background_color_{0x11, 0x22, 0x33, 0xff};
@@ -156,6 +163,7 @@ namespace kotte
         static constexpr Color crate_color_{0xb0, 0x72, 0x3c, 0xff};
         static constexpr Color enemy_color_{0xd9, 0x4f, 0x70, 0xff};
         static constexpr Color wall_color_{0x78, 0x5f, 0x47, 0xff};
+        static constexpr Color pickup_color_{0x40, 0x99, 0xe0, 0xff};
 
         Window window_; // Constructed first, destroyed last.
         Camera camera_;
@@ -170,12 +178,14 @@ namespace kotte
         std::vector<PlaceBombRequest> place_bomb_requests_;
         std::vector<BombDetonated> bomb_detonated_facts_;
         std::vector<EnemyContact> enemy_contact_facts_;
+        std::vector<PickupContact> pickup_contact_facts_;
         std::vector<DestroyEntityRequest> destroy_entity_requests_;
         std::vector<BlastEffect> blast_effects_;
         CollisionDiagnostics collision_diagnostics_;
         std::uint64_t seed_;
         EntityHandle player_handle_;
         RoundState round_state_ = RoundState::playing;
+        std::uint8_t player_blast_range_ = initial_blast_range_;
         bool exit_requested_ = false;
     };
 }

@@ -62,6 +62,7 @@ namespace kotte
         assert(place_bomb_requests_.empty());
         assert(bomb_detonated_facts_.empty());
         assert(enemy_contact_facts_.empty());
+        assert(pickup_contact_facts_.empty());
         assert(destroy_entity_requests_.empty());
         frame_actions_ = {};
         collision_diagnostics_ = {};
@@ -102,6 +103,7 @@ namespace kotte
         // The player and every enemy are movers; each asks its own collision question.
         if (round_state_ == RoundState::playing) {
             update_player(delta_time);
+            check_player_pickups();
             queue_bomb_placement();
         }
         update_enemies(delta_time);
@@ -165,6 +167,21 @@ namespace kotte
             player_death();
         }
         enemy_contact_facts_.clear();
+
+        for (const PickupContact& fact : pickup_contact_facts_) {
+            const bool already_doomed = std::ranges::any_of(
+                destroy_entity_requests_,
+                [&](const DestroyEntityRequest& req) { return req.entity == fact.pickup; });
+            if (already_doomed) {
+                continue;
+            }
+
+            if (player_blast_range_ < max_blast_range_) {
+                ++player_blast_range_;
+            }
+            destroy_entity_requests_.push_back({ fact.pickup });
+        }
+        pickup_contact_facts_.clear();
     }
 
     void Application::apply_structural_mutations(){
@@ -281,8 +298,26 @@ namespace kotte
         // deliberately outlives this simulation phase.
         place_bomb_requests_.push_back({
             player_handle_,
-            candidate_centre
+            candidate_centre,
+            player_blast_range_
         });
+    }
+
+    void Application::check_player_pickups() {
+        const Entity& player_entity = player();
+        const Rectangle player_bounds = entity_collision_bounds(player_entity);
+        const SpatialQuery contacts = spatial_grid_.query(player_bounds);
+
+        for (const EntityHandle candidate_handle : contacts.entity_handles) {
+            const Entity* candidate = entities_.try_get(candidate_handle);
+            if (candidate == nullptr || candidate->kind != EntityKind::pickup) {
+                continue;
+            }
+
+            if (CheckCollisionRecs(player_bounds, entity_collision_bounds(*candidate))) {
+                pickup_contact_facts_.push_back({ candidate_handle });
+            }
+        }
     }
 
     void Application::apply_bomb_placements(){
@@ -300,7 +335,7 @@ namespace kotte
                 .bomb_state = BombState{
                     .owner = request.owner,
                     .fuse_remaining = bomb_fuse_seconds_,
-                    .blast_range = bomb_blast_range_
+                    .blast_range = request.blast_range
                 }
             };
             const EntityHandle bomb_handle = entities_.create(bomb);
@@ -362,6 +397,7 @@ namespace kotte
         place_bomb_requests_.clear();
         bomb_detonated_facts_.clear();
         enemy_contact_facts_.clear();
+        pickup_contact_facts_.clear();
         destroy_entity_requests_.clear();
 
         blast_effects_.clear();
@@ -373,6 +409,8 @@ namespace kotte
 
         random_ = Random{ seed_ };
         map_ = make_room(map_.width(), map_.height(), random_);
+
+        player_blast_range_ = initial_blast_range_;
         
         populate_entities();
         initialize_enemies();
@@ -418,6 +456,9 @@ namespace kotte
                 break;
             case EntityKind::player:
                 player_death();
+                break;
+            case EntityKind::pickup:
+                destroy_entity_requests_.push_back({handle});
                 break;
             }
         }
@@ -534,7 +575,7 @@ namespace kotte
             const Vector2 screen_position = camera_.world_to_screen({bounds.x, bounds.y});
             bounds.x = screen_position.x;
             bounds.y = screen_position.y;
-            const RenderLayer layer = visible_candidate->kind == EntityKind::bomb
+            const RenderLayer layer = (visible_candidate->kind == EntityKind::bomb || visible_candidate->kind == EntityKind::pickup)
                 ? RenderLayer::ground
                 : RenderLayer::world;
             renderer_.submit({
@@ -596,6 +637,12 @@ namespace kotte
             collision_diagnostics_.contacts);
         DrawText(diagnostics.c_str(), 10, 106, 20, RAYWHITE);
 
+        diagnostics = std::format(
+            "blast range: {} / {}", 
+            player_blast_range_, 
+            max_blast_range_);
+        DrawText(diagnostics.c_str(), 10, 130, 20, RAYWHITE);
+
         diagnostics = std::format("seed: {}", seed_);
         DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);
 
@@ -620,9 +667,14 @@ namespace kotte
         player_handle_ = entities_.create(player_entity);
         spatial_grid_.insert(player_handle_, entity_world_bounds(player_entity));
 
+        const Vector2 pickup_position = tile_centre(4, 2);
+        const Entity pickup_entity{ EntityKind::pickup, pickup_position };
+        const EntityHandle pickup_handle = entities_.create(pickup_entity);
+        spatial_grid_.insert(pickup_handle, entity_world_bounds(pickup_entity));
+
         for(int y = 1; y < map_.height() - 1; ++y){
             for(int x = 1; x < map_.width() - 1; ++x){
-                if((x == 2 && y == 2) || map_.at(x, y).type != TileType::floor || !random_.coin_flip(0.25f)){
+                if(((x == 2 || x == 3 || x == 4) && y == 2) || map_.at(x, y).type != TileType::floor || !random_.coin_flip(0.25f)){
                     continue;
                 }
 
@@ -685,6 +737,7 @@ namespace kotte
         case EntityKind::bomb: size = {22.0f, 22.0f}; break;
         case EntityKind::crate: size = {36.0f, 48.0f}; break;
         case EntityKind::enemy: size = {28.0f, 30.0f}; break;
+        case EntityKind::pickup: size = {20.0f, 20.0f}; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
@@ -701,6 +754,7 @@ namespace kotte
         case EntityKind::bomb: size = {18.0f, 12.0f}; break;
         case EntityKind::crate: size = {32.0f, 32.0f}; break;
         case EntityKind::enemy: size = {24.0f, 14.0f}; break;
+        case EntityKind::pickup: size = {16.0f, 16.0f}; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
@@ -786,6 +840,8 @@ namespace kotte
         case EntityKind::enemy:
         case EntityKind::bomb:
             return true;
+        case EntityKind::pickup:
+            return false;
         }
 
         return false;
@@ -853,6 +909,7 @@ namespace kotte
         case EntityKind::bomb: return bomb_color_;
         case EntityKind::crate: return crate_color_;
         case EntityKind::enemy: return enemy_color_;
+        case EntityKind::pickup: return pickup_color_;
         }
         return MAGENTA;
     }
