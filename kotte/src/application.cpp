@@ -74,6 +74,7 @@ namespace kotte
         }
         frame_actions_.restart_round = (round_state_ == RoundState::lost) && IsKeyPressed(KEY_R);
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
+        frame_actions_.activate_shield = (round_state_ == RoundState::playing) && IsKeyPressed(KEY_E);
 
         Vector2& movement_direction = frame_actions_.player_movement_direction;
         if(IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)){
@@ -100,6 +101,11 @@ namespace kotte
             restart_round();
             return;
         }
+
+        if (round_state_ == RoundState::playing && frame_actions_.activate_shield && player_shield_available_) {
+            player_shield_available_ = false;
+            player_shield_remaining_seconds_ = shield_duration_seconds_;
+        }
         // The player and every enemy are movers; each asks its own collision question.
         if (round_state_ == RoundState::playing) {
             update_player(delta_time);
@@ -111,6 +117,10 @@ namespace kotte
 
     void Application::update_timed_gameplay(float delta_time){
         // This list is independent of camera queries, so off-screen fuses advance.
+        if (player_shield_remaining_seconds_ > 0.0f) {
+            player_shield_remaining_seconds_ = std::max(0.0f, player_shield_remaining_seconds_ - delta_time);
+        }
+
         for(const EntityHandle bomb_handle : active_bomb_handles_){
             Entity* bomb = entities_.try_get(bomb_handle);
             if(bomb == nullptr || !bomb->bomb_state.has_value()
@@ -387,7 +397,7 @@ namespace kotte
     }
 
     void Application::player_death() {
-        if (round_state_ != RoundState::playing) {
+        if (round_state_ != RoundState::playing || player_shield_remaining_seconds_ > 0.0f) {
             return;
         }
         round_state_ = RoundState::lost;
@@ -412,6 +422,9 @@ namespace kotte
         map_ = make_room(map_.width(), map_.height(), random_);
 
         player_blast_range_ = initial_blast_range_;
+
+        player_shield_available_ = true;
+        player_shield_remaining_seconds_ = 0.0f;
         
         populate_entities();
         initialize_enemies();
@@ -592,9 +605,15 @@ namespace kotte
             const RenderLayer layer = (visible_candidate->kind == EntityKind::bomb || visible_candidate->kind == EntityKind::pickup)
                 ? RenderLayer::ground
                 : RenderLayer::world;
+
+            Color candidate_color = entity_color(visible_candidate->kind);
+            if (visible_candidate->kind == EntityKind::player && player_shield_remaining_seconds_ > 0.0f) {
+                candidate_color = player_shield_color_;
+            }
+
             renderer_.submit({
                 bounds,
-                entity_color(visible_candidate->kind),
+                candidate_color,
                 layer,
                 visible_candidate->world_position.y,
                 entity_roundness(visible_candidate->kind)
@@ -657,6 +676,18 @@ namespace kotte
             max_blast_range_);
         DrawText(diagnostics.c_str(), 10, 130, 20, RAYWHITE);
 
+        if (player_shield_remaining_seconds_ > 0.0f) {
+            diagnostics = std::format(
+                "shield: {:.1f}s remaining", player_shield_remaining_seconds_);
+            DrawText(diagnostics.c_str(), 10, 154, 20, GREEN);
+        }
+        else if (player_shield_available_) {
+            DrawText("shield: available", 10, 154, 20, RAYWHITE);
+        }
+        else {
+            DrawText("shield: unavailable", 10, 154, 20, DARKGRAY);
+        }
+
         diagnostics = std::format("seed: {}", seed_);
         DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);
 
@@ -664,7 +695,7 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        DrawText("move: WASD/arrows | bomb: Space | shield: E | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
 
         if (round_state_ == RoundState::lost) {
             DrawText("YOU LOSE", window_.width() / 2 - 120, window_.height() / 2 - 10, 40, RED);
