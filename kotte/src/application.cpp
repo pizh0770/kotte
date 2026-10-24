@@ -72,7 +72,7 @@ namespace kotte
         if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q)){
             request_exit();
         }
-        frame_actions_.restart_round = (round_state_ == RoundState::lost) && IsKeyPressed(KEY_R);
+        frame_actions_.restart_round = (round_state_ != RoundState::playing) && IsKeyPressed(KEY_R);
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
         frame_actions_.activate_shield = (round_state_ == RoundState::playing) && IsKeyPressed(KEY_E);
 
@@ -375,6 +375,13 @@ namespace kotte
                 continue;
             }
 
+            if (doomed->kind == EntityKind::enemy && round_state_ == RoundState::playing) {
+                ++enemies_killed_;
+                if (enemies_killed_ >= target_enemy_kills_) {
+                    round_state_ = RoundState::won;
+                }
+            }
+
             // Spatial membership is derived from the live entity, so remove it
             // while the handle can still resolve to the bounds used at insertion.
             spatial_grid_.remove(request.entity, entity_world_bounds(*doomed));
@@ -425,6 +432,8 @@ namespace kotte
 
         player_shield_available_ = true;
         player_shield_remaining_seconds_ = 0.0f;
+
+        enemies_killed_ = 0;
         
         populate_entities();
         initialize_enemies();
@@ -688,6 +697,10 @@ namespace kotte
             DrawText("shield: unavailable", 10, 154, 20, DARKGRAY);
         }
 
+        diagnostics = std::format(
+            "enemies killed: {} / {}", enemies_killed_, target_enemy_kills_);
+        DrawText(diagnostics.c_str(), 10, 178, 20, RAYWHITE);
+
         diagnostics = std::format("seed: {}", seed_);
         DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);
 
@@ -699,6 +712,10 @@ namespace kotte
 
         if (round_state_ == RoundState::lost) {
             DrawText("YOU LOSE", window_.width() / 2 - 120, window_.height() / 2 - 10, 40, RED);
+            DrawText("press R to restart", window_.width() / 2 - 120, window_.height() / 2 + 30, 20, LIGHTGRAY);
+        }
+        else if (round_state_ == RoundState::won) {
+            DrawText("YOU WIN!", window_.width() / 2 - 120, window_.height() / 2 - 10, 40, GREEN);
             DrawText("press R to restart", window_.width() / 2 - 120, window_.height() / 2 + 30, 20, LIGHTGRAY);
         }
     }

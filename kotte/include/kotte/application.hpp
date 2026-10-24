@@ -19,7 +19,8 @@ namespace kotte
 {
     enum class RoundState : std::uint8_t {
         playing,
-        lost
+        lost,
+        won
     };
 
     struct CollisionDiagnostics final {
@@ -152,6 +153,7 @@ namespace kotte
         static constexpr std::uint8_t max_blast_range_ = 4;
         static constexpr float blast_effect_seconds_ = 0.35f;
         static constexpr std::size_t bomb_capacity_ = 3;
+        static constexpr std::size_t target_enemy_kills_ = 10;
         static constexpr float shield_duration_seconds_ = 7.0f;
         static constexpr Color player_shield_color_{0x6c, 0xf2, 0xf3, 0xff};
         static constexpr Color background_color_{0x11, 0x22, 0x33, 0xff};
@@ -191,6 +193,7 @@ namespace kotte
         std::uint8_t player_blast_range_ = initial_blast_range_;
         float player_shield_remaining_seconds_ = 0.0f;
         bool player_shield_available_ = true;
+        std::size_t enemies_killed_ = 0;
         bool exit_requested_ = false;
     };
 }
