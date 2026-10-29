@@ -1,23 +1,33 @@
-# Bomberman World — easiest possible mission for a bomber
+# Bomberman World — Easiest Mission Ever
 
 **Student:** Pinqi Zhang
 
 ## How to play
 
 - **Controls:** 
+
 	**Movement:** W, A, S, D / Arrow keys
+  
 	**Place bomb:** Space
+  
 	**Activate shield:** E
+  
 	**Restart:** R, available after a round ends
+  
 	**Quit:** Q / Escape
 
-- **Objective and rules:** 
+- **Objective and rules:**
+  
 	**Winning / losing:** Kill 10 enemies to win the game. The round ends if the player touches an enemy or gets caught in an explosion. If the player dies at the same moment as they kill the final enemy, the player loses.
+  
 	**Bomb:** The player can have up to 3 active bombs at once. Bombs block movement, but the player can move off a bomb after placing it. The player can't place multiple bombs on the same tile. An explosion touching another bomb triggers an immediate detonation.
+  
 	**Power-up:** Collect the blue item to increase the blast range of future bombs from 3 tiles to 4 tiles. Bombs already placed keep their original range.
+  
 	**Shield:** The shield gives the player 7 seconds of invulnerability. It can only be used once per round.
 
-- **Configurations / demo setup:** 
+- **Configurations / demo setup:**
+  
 	Default.
 
 ## Features and validation
