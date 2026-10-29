@@ -30,7 +30,8 @@ namespace kotte
 
     void Application::run(){
         while(!window_.should_close() && !exit_requested_){
-            run_frame(GetFrameTime());
+            const float delta_time = std::min(GetFrameTime(), 0.1f);
+            run_frame(delta_time);
         }
     }
 
@@ -662,11 +663,13 @@ namespace kotte
         DrawText(diagnostics.c_str(), 10, 34, 20, RAYWHITE);
 
         diagnostics = std::format(
-            "enemies updated: {} | active bombs: {} | blast effects: {}",
+            "enemies updated: {} | active bombs: {} / {} | bomb handles: {} | blast effects: {}",
             collision_diagnostics_.enemy_updates,
+            owner_active_bomb_count(player_handle_),
+            bomb_capacity_,
             active_bomb_handles_.size(),
             blast_effects_.size());
-        DrawText(diagnostics.c_str(), 10, 58, 20, RAYWHITE);
+        DrawText(diagnostics.c_str(), 10, 58, 20, PINK);
 
         diagnostics = std::format(
             "broad phase: {} candidates | {:.1f}% fewer than full scan",
